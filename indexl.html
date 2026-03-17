@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fly Guy Reader</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --yellow: #FFD93D;
+  --orange: #FF6B35;
+  --blue: #4ECDC4;
+  --navy: #1A1A2E;
+  --cream: #FFFBF0;
+  --green: #6BCB77;
+  --pink: #FF6B9D;
+  --purple: #C77DFF;
+  --shadow: 0 8px 32px rgba(26,26,46,0.12);
+  --radius: 20px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', sans-serif; background: var(--cream); min-height: 100vh; overflow-x: hidden; }
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: 0;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(255,217,61,0.18) 0%, transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(78,205,196,0.15) 0%, transparent 40%);
+  pointer-events: none;
+}
+.screen { display: none; position: relative; z-index: 1; }
+.screen.active { display: block; }
+
+/* ── SHELF ── */
+#shelf-screen { padding: 0 0 60px; }
+.shelf-header {
+  background: var(--navy); padding: 28px 32px 24px;
+  display: flex; align-items: center; gap: 16px;
+  position: relative; overflow: hidden;
+}
+.shelf-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 12px;
+  background: var(--cream); border-radius: 12px 12px 0 0;
+}
+.logo-fly { font-family: 'Fredoka One', cursive; font-size: 42px; color: var(--yellow); line-height: 1; text-shadow: 3px 3px 0 rgba(0,0,0,0.25); }
+.logo-sub { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+.header-bug { margin-left: auto; font-size: 52px; animation: wiggle 3s ease-in-out infinite; }
+@keyframes wiggle { 0%,100%{ transform: rotate(-5deg) scale(1); } 50%{ transform: rotate(8deg) scale(1.08); } }
+
+.progress-bar-wrap { margin: 24px 32px 0; background: rgba(26,26,46,0.06); border-radius: 100px; height: 10px; overflow: hidden; }
+.progress-bar-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--orange), var(--yellow)); transition: width 0.6s cubic-bezier(.34,1.56,.64,1); }
+.progress-label { font-size: 13px; font-weight: 700; color: var(--navy); opacity: 0.5; margin: 8px 32px 0; }
+
+.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; padding: 28px 32px; }
+.book-card {
+  background: white; border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--shadow); cursor: pointer;
+  transition: transform 0.2s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s;
+  position: relative;
+}
+.book-card:hover { transform: translateY(-6px) scale(1.03); box-shadow: 0 16px 40px rgba(26,26,46,0.18); }
+.book-card:active { transform: scale(0.97); }
+.book-cover-placeholder {
+  width: 100%; aspect-ratio: 3/4;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px; padding: 16px; font-family: 'Fredoka One', cursive;
+}
+.book-cover-placeholder .bug { font-size: 48px; }
+.book-cover-placeholder .num { font-size: 28px; color: white; text-shadow: 2px 2px 0 rgba(0,0,0,0.2); }
+.book-cover-placeholder .title { font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.85); text-align: center; line-height: 1.3; text-transform: uppercase; letter-spacing: 0.5px; }
+.book-info { padding: 10px 12px 12px; }
+.book-title { font-size: 12px; font-weight: 800; color: var(--navy); line-height: 1.3; margin-bottom: 6px; }
+.book-meta { display: flex; align-items: center; justify-content: space-between; }
+.book-lexile { font-size: 10px; font-weight: 700; background: var(--blue); color: white; padding: 2px 7px; border-radius: 100px; }
+.finished-badge { position: absolute; top: 8px; right: 8px; background: var(--green); color: white; font-size: 18px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+
+/* ── READER ── */
+#reader-screen { height: 100vh; display: none; flex-direction: column; }
+#reader-screen.active { display: flex; }
+.reader-topbar {
+  background: var(--navy); padding: 12px 20px;
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.btn-back {
+  background: rgba(255,255,255,0.1); border: none; color: white;
+  width: 36px; height: 36px; border-radius: 10px; font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+}
+.btn-back:hover { background: rgba(255,255,255,0.2); }
+.reader-book-title { font-family: 'Fredoka One', cursive; font-size: 16px; color: white; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* PDF embed area */
+.reading-area { flex: 1; overflow: hidden; position: relative; background: #e8e4da; }
+#pdf-frame {
+  width: 100%; height: 100%; border: none;
+  display: block;
+}
+.pdf-loading {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  background: var(--cream);
+}
+.pdf-loading .big-bug { font-size: 64px; animation: wiggle 2s ease-in-out infinite; }
+.pdf-loading p { font-size: 14px; color: var(--navy); opacity: 0.5; }
+.pdf-error {
+  position: absolute; inset: 0;
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  background: var(--cream); padding: 32px; text-align: center;
+}
+.pdf-error .big-bug { font-size: 64px; }
+.pdf-error h3 { font-size: 18px; color: var(--navy); }
+.pdf-error p { font-size: 13px; color: var(--navy); opacity: 0.55; line-height: 1.7; }
+.pdf-error code { background: rgba(26,26,46,0.07); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+/* bottom controls */
+.reader-controls {
+  flex-shrink: 0; background: white;
+  border-top: 1px solid rgba(26,26,46,0.06);
+  padding: 12px 20px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.audio-row { display: flex; align-items: center; gap: 10px; }
+.btn-play {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--orange); border: none; color: white;
+  font-size: 18px; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.15s, background 0.15s;
+  box-shadow: 0 4px 12px rgba(255,107,53,0.4);
+}
+.btn-play:hover { transform: scale(1.08); }
+.btn-play:active { transform: scale(0.95); }
+.audio-progress-wrap { flex: 1; cursor: pointer; padding: 8px 0; }
+.audio-track { height: 6px; border-radius: 100px; background: rgba(26,26,46,0.1); position: relative; }
+.audio-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--orange), var(--yellow)); width: 0%; transition: width 0.1s; }
+.audio-time { font-size: 11px; font-weight: 700; color: var(--navy); opacity: 0.4; white-space: nowrap; flex-shrink: 0; }
+.no-audio-msg { font-size: 12px; color: var(--navy); opacity: 0.4; font-style: italic; text-align: center; padding: 4px 0; }
+
+.controls-bottom { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.btn-finish {
+  padding: 10px 20px; border-radius: 100px;
+  background: var(--green); border: none; color: white;
+  font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800; cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  transition: transform 0.15s;
+  box-shadow: 0 4px 12px rgba(107,203,119,0.4);
+}
+.btn-finish:hover { transform: scale(1.05); }
+
+/* word lookup */
+.word-tooltip {
+  position: fixed; z-index: 200;
+  background: var(--navy); color: white;
+  border-radius: 14px; padding: 14px 18px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  max-width: 260px; min-width: 180px;
+  display: none;
+  animation: popIn 0.2s cubic-bezier(.34,1.56,.64,1);
+}
+.word-tooltip.visible { display: block; }
+@keyframes popIn { from { opacity: 0; transform: scale(0.85) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.tooltip-word { font-family: 'Fredoka One', cursive; font-size: 22px; color: var(--yellow); margin-bottom: 4px; }
+.tooltip-phonetic { font-size: 12px; opacity: 0.5; margin-bottom: 8px; }
+.tooltip-meaning { font-size: 13px; line-height: 1.5; }
+.tooltip-example { font-size: 12px; opacity: 0.6; margin-top: 6px; font-style: italic; line-height: 1.4; }
+.tooltip-close { position: absolute; top: 8px; right: 10px; background: none; border: none; color: white; opacity: 0.4; cursor: pointer; font-size: 16px; }
+
+/* word lookup button */
+.btn-lookup {
+  padding: 10px 16px; border-radius: 100px;
+  background: rgba(26,26,46,0.07); border: none;
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700;
+  color: var(--navy); cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+  transition: background 0.15s;
+}
+.btn-lookup:hover { background: rgba(26,26,46,0.12); }
+
+/* celebration */
+.celebration { position: fixed; inset: 0; z-index: 300; background: rgba(26,26,46,0.75); display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.celebration.visible { display: flex; }
+.celebrate-card { background: white; border-radius: 28px; padding: 40px 48px; text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,0.3); animation: popIn 0.4s cubic-bezier(.34,1.56,.64,1); max-width: 320px; }
+.celebrate-card .big-emoji { font-size: 72px; margin-bottom: 12px; }
+.celebrate-card h2 { font-family: 'Fredoka One', cursive; font-size: 32px; color: var(--navy); margin-bottom: 8px; }
+.celebrate-card p { font-size: 15px; color: var(--navy); opacity: 0.6; margin-bottom: 24px; line-height: 1.6; }
+.btn-celebrate { background: var(--orange); color: white; border: none; padding: 14px 32px; border-radius: 100px; font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 800; cursor: pointer; box-shadow: 0 6px 20px rgba(255,107,53,0.4); transition: transform 0.15s; }
+.btn-celebrate:hover { transform: scale(1.05); }
+.confetti-piece { position: fixed; z-index: 400; width: 10px; height: 10px; border-radius: 2px; animation: fall 1.8s ease-in forwards; pointer-events: none; }
+@keyframes fall { 0% { transform: translateY(-20px) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+
+@media (max-width: 480px) {
+  .book-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 20px 16px; }
+  .shelf-header { padding: 20px 16px 20px; }
+  .progress-bar-wrap, .progress-label { margin-left: 16px; margin-right: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- SHELF -->
+<div id="shelf-screen" class="screen active">
+  <div class="shelf-header">
+    <div>
+      <div class="logo-fly">Fly Guy!</div>
+      <div class="logo-sub">Reading Adventure · 苍蝇小子</div>
+    </div>
+    <div class="header-bug">🪰</div>
+  </div>
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="shelf-progress-fill" style="width:0%"></div></div>
+  <div class="progress-label" id="shelf-progress-label">0 / 16 books finished</div>
+  <div class="book-grid" id="book-grid"></div>
+</div>
+
+<!-- READER -->
+<div id="reader-screen" class="screen">
+  <div class="reader-topbar">
+    <button class="btn-back" id="btn-back">←</button>
+    <div class="reader-book-title" id="reader-title"></div>
+  </div>
+
+  <div class="reading-area">
+    <div class="pdf-loading" id="pdf-loading">
+      <div class="big-bug">🪰</div>
+      <p>Loading book...</p>
+    </div>
+    <div class="pdf-error" id="pdf-error">
+      <div class="big-bug">😅</div>
+      <h3>PDF not found</h3>
+      <p>Make sure the PDF file is in the<br>same folder as this HTML file.<br><br>Expected filename:<br><code id="expected-filename"></code></p>
+    </div>
+    <iframe id="pdf-frame" title="Book reader"></iframe>
+  </div>
+
+  <div class="reader-controls">
+    <div class="audio-row" id="audio-row">
+      <button class="btn-play" id="btn-play">▶</button>
+      <div class="audio-progress-wrap" id="audio-progress-wrap">
+        <div class="audio-track"><div class="audio-fill" id="audio-fill"></div></div>
+      </div>
+      <div class="audio-time" id="audio-time">0:00</div>
+    </div>
+    <div class="no-audio-msg" id="no-audio-msg" style="display:none">🎵 Audio file not found — check filename matches exactly</div>
+    <div class="controls-bottom">
+      <button class="btn-lookup" id="btn-lookup">🔍 Look up word</button>
+      <button class="btn-finish" id="btn-finish">⭐ Finished!</button>
+    </div>
+  </div>
+</div>
+
+<!-- WORD TOOLTIP -->
+<div class="word-tooltip" id="word-tooltip">
+  <button class="tooltip-close" id="tooltip-close">✕</button>
+  <div class="tooltip-word" id="tooltip-word"></div>
+  <div class="tooltip-phonetic" id="tooltip-phonetic"></div>
+  <div class="tooltip-meaning" id="tooltip-meaning"></div>
+  <div class="tooltip-example" id="tooltip-example"></div>
+</div>
+
+<!-- CELEBRATION -->
+<div class="celebration" id="celebration">
+  <div class="celebrate-card">
+    <div class="big-emoji" id="celebrate-emoji">🎉</div>
+    <h2 id="celebrate-title">Book finished!</h2>
+    <p id="celebrate-msg"></p>
+    <button class="btn-celebrate" id="btn-celebrate">Back to books →</button>
+  </div>
+</div>
+
+<audio id="audio-player"></audio>
+
+<script>
+// ═══════════════════════════════════════════
+// BOOK DATA
+// File naming: "Fly guy 苍蝇小子【01】Hi, Fly Guy.pdf"
+// ═══════════════════════════════════════════
+const BOOKS = [
+  { id:1,  num:"01", title:"Hi, Fly Guy",             lexile:390, color:"#FF6B35,#FFD93D", emoji:"🪰" },
+  { id:2,  num:"02", title:"Super Fly Guy",            lexile:400, color:"#4ECDC4,#44A08D", emoji:"⚡" },
+  { id:3,  num:"03", title:"Shoo, Fly Guy",            lexile:410, color:"#FF6B9D,#C44B9A", emoji:"🙅" },
+  { id:4,  num:"04", title:"There Was an Old Lady Who Swallowed a Fly Guy", lexile:380, color:"#C77DFF,#7B2FBE", emoji:"👵" },
+  { id:5,  num:"05", title:"Fly High, Fly Guy",        lexile:420, color:"#6BCB77,#4A9E52", emoji:"✈️" },
+  { id:6,  num:"06", title:"Hooray for Fly Guy",       lexile:430, color:"#FFD93D,#FFA500", emoji:"🎉" },
+  { id:7,  num:"07", title:"I Spy Fly Guy",            lexile:440, color:"#FF6B35,#C44B2A", emoji:"🔍" },
+  { id:8,  num:"08", title:"Fly Guy Meets Fly Girl",   lexile:420, color:"#FF6B9D,#FF4081", emoji:"💕" },
+  { id:9,  num:"09", title:"Buzz Boy and Fly Guy",     lexile:430, color:"#4ECDC4,#0097A7", emoji:"🦸" },
+  { id:10, num:"10", title:"Fly Guy vs. the Flyswatter!", lexile:440, color:"#C77DFF,#9C27B0", emoji:"🥊" },
+  { id:11, num:"11", title:"Fly Guy and the Alienzz",  lexile:450, color:"#6BCB77,#2E7D32", emoji:"👽" },
+  { id:12, num:"12", title:"Dear Fly Guy",             lexile:420, color:"#FF6B35,#E64A19", emoji:"✉️" },
+  { id:13, num:"13", title:"Ride, Fly Guy, Ride",      lexile:440, color:"#4ECDC4,#00BCD4", emoji:"🚌" },
+  { id:14, num:"14", title:"Fly Guy's Amazing Tricks", lexile:460, color:"#FFD93D,#F57F17", emoji:"🎪" },
+  { id:15, num:"15", title:"Fly Guy Presents: Insects",lexile:500, color:"#FF6B9D,#AD1457", emoji:"🦋" },
+  { id:16, num:"16", title:"There's a Fly Guy in My Soup!", lexile:430, color:"#C77DFF,#4A148C", emoji:"🍜" },
+];
+
+// Build PDF and audio filenames to match your actual files exactly
+function pdfFilename(book) {
+  return `Fly guy 苍蝇小子【${book.num}】${book.title}.pdf`;
+}
+function audioFilename(book) {
+  return `Fly guy 苍蝇小子【${book.num}】${book.title}.mp3`;
+}
+
+// Word dictionary
+const WORDS = {
+  "buzz":    { phonetic:"/bʌz/",       meaning:"A humming sound, like bees. Also the boy's name!",          example:"\"BUZZ!\" said Fly Guy." },
+  "fly":     { phonetic:"/flaɪ/",      meaning:"To move through the air. Also a small winged insect.",      example:"Fly Guy can fly very fast." },
+  "pet":     { phonetic:"/pɛt/",       meaning:"An animal you keep at home and take care of.",              example:"Buzz wanted a pet." },
+  "amazing": { phonetic:"/əˈmeɪzɪŋ/", meaning:"Very surprising and wonderful!",                            example:"Fly Guy is an amazing pet." },
+  "contest": { phonetic:"/ˈkɒntɛst/", meaning:"A competition to find out who is best.",                    example:"There was a pet contest." },
+  "smart":   { phonetic:"/smɑːt/",     meaning:"Clever and good at learning things.",                       example:"Fly Guy is very smart." },
+  "shoo":    { phonetic:"/ʃuː/",       meaning:"What you say to make an animal go away.",                   example:"\"Shoo!\" said Mom." },
+  "swallow": { phonetic:"/ˈswɒloʊ/",  meaning:"To make food go from your mouth to your stomach.",          example:"She swallowed Fly Guy by accident!" },
+  "super":   { phonetic:"/ˈsuːpər/",  meaning:"Better than normal; very great.",                           example:"Fly Guy was a super hero." },
+  "spy":     { phonetic:"/spaɪ/",      meaning:"To secretly watch or find something hidden.",               example:"Can you spy Fly Guy?" },
+  "hooray":  { phonetic:"/hʊˈreɪ/",   meaning:"A word you shout when you are happy or excited.",           example:"\"Hooray!\" cheered Buzz." },
+  "high":    { phonetic:"/haɪ/",       meaning:"Far up above the ground.",                                  example:"Fly Guy flew up high." },
+  "alien":   { phonetic:"/ˈeɪliən/",  meaning:"A creature from another planet.",                           example:"The alienzz came from space." },
+  "trick":   { phonetic:"/trɪk/",      meaning:"A clever or surprising action.",                            example:"Fly Guy showed an amazing trick." },
+  "insect":  { phonetic:"/ˈɪnsɛkt/",  meaning:"A small creature with 6 legs, like ants and flies.",        example:"A fly is an insect." },
+  "soup":    { phonetic:"/suːp/",       meaning:"A hot liquid food made by cooking vegetables or meat.",    example:"There's a fly in my soup!" },
+};
+
+// ── STATE ──
+let state = {
+  currentBook: null,
+  finished: JSON.parse(localStorage.getItem('fg_finished') || '[]'),
+};
+const audio = document.getElementById('audio-player');
+
+// ══════════════════════════════
+// SHELF
+// ══════════════════════════════
+function buildShelf() {
+  const grid = document.getElementById('book-grid');
+  grid.innerHTML = '';
+  BOOKS.forEach(book => {
+    const done = state.finished.includes(book.id);
+    const colors = book.color.split(',');
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.innerHTML = `
+      <div class="book-cover-placeholder" style="background:linear-gradient(135deg,${colors[0]},${colors[1]})">
+        <div class="bug">${book.emoji}</div>
+        <div class="num">#${book.id}</div>
+        <div class="title">${book.title}</div>
+      </div>
+      <div class="book-info">
+        <div class="book-title">${book.title}</div>
+        <div class="book-meta">
+          <span class="book-lexile">${book.lexile}L</span>
+        </div>
+      </div>
+      ${done ? '<div class="finished-badge">✓</div>' : ''}
+    `;
+    card.onclick = () => openBook(book);
+    grid.appendChild(card);
+  });
+  const pct = Math.round(state.finished.length / BOOKS.length * 100);
+  document.getElementById('shelf-progress-fill').style.width = pct + '%';
+  document.getElementById('shelf-progress-label').textContent =
+    `${state.finished.length} / ${BOOKS.length} books finished · ${pct}% complete`;
+}
+
+// ══════════════════════════════
+// OPEN BOOK
+// ══════════════════════════════
+function openBook(book) {
+  state.currentBook = book;
+  document.getElementById('reader-title').textContent = `#${book.id} ${book.title}`;
+  document.getElementById('shelf-screen').classList.remove('active');
+  document.getElementById('reader-screen').classList.add('active');
+
+  loadPDF(book);
+  loadAudio(book);
+}
+
+function loadPDF(book) {
+  const frame = document.getElementById('pdf-frame');
+  const loading = document.getElementById('pdf-loading');
+  const error = document.getElementById('pdf-error');
+
+  frame.style.display = 'none';
+  loading.style.display = 'flex';
+  error.style.display = 'none';
+
+  const filename = pdfFilename(book);
+  document.getElementById('expected-filename').textContent = filename;
+
+  // encode for URL (handles Chinese chars and brackets)
+  const encoded = encodeURIComponent(filename);
+  const src = encoded + '#toolbar=1&navpanes=0&scrollbar=1&view=FitH';
+
+  frame.onload = () => {
+    loading.style.display = 'none';
+    frame.style.display = 'block';
+  };
+  frame.onerror = () => {
+    loading.style.display = 'none';
+    error.style.display = 'flex';
+  };
+
+  // Small delay to allow loading state to render
+  setTimeout(() => { frame.src = src; }, 100);
+}
+
+// ══════════════════════════════
+// AUDIO
+// ══════════════════════════════
+function loadAudio(book) {
+  const filename = audioFilename(book);
+  audio.src = encodeURIComponent(filename);
+
+  document.getElementById('btn-play').textContent = '▶';
+  document.getElementById('audio-fill').style.width = '0%';
+  document.getElementById('audio-time').textContent = '0:00';
+
+  audio.onerror = () => {
+    document.getElementById('audio-row').style.display = 'none';
+    document.getElementById('no-audio-msg').style.display = 'block';
+  };
+  audio.oncanplay = () => {
+    document.getElementById('audio-row').style.display = 'flex';
+    document.getElementById('no-audio-msg').style.display = 'none';
+  };
+  audio.ontimeupdate = () => {
+    const pct = audio.duration ? (audio.currentTime / audio.duration * 100) : 0;
+    document.getElementById('audio-fill').style.width = pct + '%';
+    const m = Math.floor(audio.currentTime / 60);
+    const s = String(Math.floor(audio.currentTime % 60)).padStart(2, '0');
+    document.getElementById('audio-time').textContent = `${m}:${s}`;
+  };
+  audio.load();
+}
+
+document.getElementById('btn-play').onclick = () => {
+  if (audio.paused) {
+    audio.play().catch(() => {});
+    document.getElementById('btn-play').textContent = '⏸';
+  } else {
+    audio.pause();
+    document.getElementById('btn-play').textContent = '▶';
+  }
+};
+audio.onended = () => { document.getElementById('btn-play').textContent = '▶'; };
+
+document.getElementById('audio-progress-wrap').onclick = (e) => {
+  if (!audio.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+};
+
+// ══════════════════════════════
+// BACK
+// ══════════════════════════════
+document.getElementById('btn-back').onclick = () => {
+  audio.pause(); audio.src = '';
+  document.getElementById('pdf-frame').src = '';
+  document.getElementById('reader-screen').classList.remove('active');
+  document.getElementById('shelf-screen').classList.add('active');
+  buildShelf();
+};
+
+// ══════════════════════════════
+// FINISH
+// ══════════════════════════════
+document.getElementById('btn-finish').onclick = () => {
+  const book = state.currentBook;
+  if (!state.finished.includes(book.id)) {
+    state.finished.push(book.id);
+    localStorage.setItem('fg_finished', JSON.stringify(state.finished));
+  }
+  audio.pause();
+  const allDone = state.finished.length === BOOKS.length;
+  document.getElementById('celebrate-emoji').textContent = allDone ? '🏆' : '🎉';
+  document.getElementById('celebrate-title').textContent = allDone ? 'All 16 done!' : 'Book finished!';
+  document.getElementById('celebrate-msg').textContent = allDone
+    ? 'You read ALL the Fly Guy books! You are an amazing reader! 🌟'
+    : `Great job finishing "${book.title}"!\nKeep going — you're doing so well!`;
+  document.getElementById('celebration').classList.add('visible');
+  launchConfetti();
+};
+document.getElementById('btn-celebrate').onclick = () => {
+  document.getElementById('celebration').classList.remove('visible');
+  document.getElementById('reader-screen').classList.remove('active');
+  document.getElementById('shelf-screen').classList.add('active');
+  buildShelf();
+};
+
+// ══════════════════════════════
+// WORD LOOKUP
+// ══════════════════════════════
+document.getElementById('btn-lookup').onclick = () => {
+  const word = prompt('Type the word you want to look up 🔍');
+  if (!word) return;
+  const key = word.toLowerCase().trim();
+  const data = WORDS[key];
+  const tooltip = document.getElementById('word-tooltip');
+  document.getElementById('tooltip-word').textContent = key;
+  if (data) {
+    document.getElementById('tooltip-phonetic').textContent = data.phonetic;
+    document.getElementById('tooltip-meaning').textContent = data.meaning;
+    document.getElementById('tooltip-example').textContent = '"' + data.example + '"';
+  } else {
+    document.getElementById('tooltip-phonetic').textContent = '';
+    document.getElementById('tooltip-meaning').textContent = 'Not in the built-in list — look it up together!';
+    document.getElementById('tooltip-example').textContent = '';
+  }
+  tooltip.style.left = '50%';
+  tooltip.style.transform = 'translateX(-50%)';
+  tooltip.style.top = '80px';
+  tooltip.classList.add('visible');
+};
+document.getElementById('tooltip-close').onclick = () => {
+  document.getElementById('word-tooltip').classList.remove('visible');
+};
+
+// ══════════════════════════════
+// CONFETTI
+// ══════════════════════════════
+function launchConfetti() {
+  const colors = ['#FFD93D','#FF6B35','#4ECDC4','#6BCB77','#FF6B9D','#C77DFF'];
+  for (let i = 0; i < 60; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.background = colors[Math.floor(Math.random() * colors.length)];
+      el.style.width = (8 + Math.random() * 8) + 'px';
+      el.style.height = (8 + Math.random() * 8) + 'px';
+      el.style.animationDuration = (1.2 + Math.random() * 1.2) + 's';
+      el.style.animationDelay = (Math.random() * 0.4) + 's';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3000);
+    }, i * 30);
+  }
+}
+
+// INIT
+buildShelf();
+</script>
+</body>
+</html>
